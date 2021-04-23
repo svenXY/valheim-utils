@@ -22,14 +22,14 @@ Either build and use the docker container (see below) or do the following:
 # open a terminal
 
 git clone $URL
-cd valheim_utils
+cd valheim-utils
 
 # optional: create and/r activate a virtual environment
 pip install requirements.txt
 
-python valheim_backup --help
+python valheim_backup.py --help
 
-python valheim_backup \
+python valheim_backup.py \
     --source $HOME/.config/unity3d/IronGate/Valheim
     --destination $HOME//valheim_backup \
     --verbose
