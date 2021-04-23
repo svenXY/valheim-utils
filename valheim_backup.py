@@ -15,27 +15,30 @@ LOOP_TIME = 300 # seconds
 SUFFIXES = ['db', 'fch']
 EVENT='IN_MOVED_TO'
 NONEEVENT= ['IN_ACCESS']
-FORMAT = '%(asctime)-15s %(levelname)s %(message)s'
-
-def _main(args):
-    observer = log.PythonLoggingObserver()
-    observer.start()
-
-    logger.info('Background backup process started in %s', args.source)
-
-    lc = LoopingCall(backup_loop)
-    d = lc.start(args.loop_time)
-    d.addErrback(errback)
-
-    reactor.run()
+FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
 def parse_args(args):
-    parser = argparse.ArgumentParser(description='Regularly backup valheim world and character files after changes')
-    parser.add_argument('--source', '-s', required=True, help='Your valheim directory, some thing like $HOME/.config/unity3d/IronGate/Valheim')
-    parser.add_argument('--destination', '-D', default='.', help='Where to write the bckup files')
-    parser.add_argument('--time', '-t', default=LOOP_TIME, dest='loop_time', help='Time after which the loop is restarted')
-    parser.add_argument('--verbose', '-v', dest='loglevel', action='store_const', const=logging.INFO, default=logging.WARNING, help='Log more verbously')
-    parser.add_argument('--debug', '-d', dest='loglevel', action='store_const', const=logging.DEBUG, help='Log debug')
+    parser = argparse.ArgumentParser(
+            description='Regularly backup valheim world and character files after changes',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--source', '-s',
+            default="$HOME/.config/unity3d/IronGate/Valheim",
+            help='Your valheim data directory')
+    parser.add_argument('--destination', '-D',
+            default='.',
+            help='Where to write the bckup files')
+    parser.add_argument('--time', '-t',
+            default=LOOP_TIME,
+            dest='loop_time',
+            help='Time after which the loop is restarted')
+    parser.add_argument('--verbose', '-v',
+            dest='loglevel', action='store_const',
+            const=logging.INFO,
+            default=logging.WARNING,)
+    parser.add_argument('--debug', '-d',
+            dest='loglevel',
+            action='store_const',
+            const=logging.DEBUG,)
     return parser.parse_args()
 
 def errback(message):
@@ -82,15 +85,30 @@ def backup(files, backup_path):
             logger.exception('Failed to write backup to %s', zipdest)
 
 def start_logging(level):
-    logging.basicConfig(level=level, format=FORMAT)
+    logging.basicConfig(
+            level=level,
+            format=FORMAT,
+            datefmt='%Y-%m-%d %H:%M:%S')
     logging.Formatter.converter = lambda *args: datetime.now(tz=timezone('Europe/Berlin')).timetuple()
     return logging.getLogger('valheimBackup')
 
 if __name__ == '__main__':
+
+    # configure...
     args = parse_args(sys.argv[1:])
     VALHEIM_WORLDS = Path(args.source) / 'worlds'
     VALHEIM_CHARS  = Path(args.source) / 'characters'
     BACKUP_PATH = Path(args.destination)
-    logger = start_logging(args.loglevel)
-    _main(args)
 
+    # make sure all logging output properly
+    logger = start_logging(args.loglevel)
+    observer = log.PythonLoggingObserver()
+    observer.start()
+    logger.info('Background backup process started in %s', args.source)
+
+    # start the loop
+    lc = LoopingCall(backup_loop)
+    d = lc.start(args.loop_time)
+    d.addErrback(errback)
+
+    reactor.run()
