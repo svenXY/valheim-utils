@@ -1,5 +1,6 @@
 import sys
 import logging
+import argparse
 from glob import glob
 import tarfile
 from pathlib import Path
@@ -10,29 +11,32 @@ from twisted.internet.task import LoopingCall
 from twisted.internet import reactor, defer
 from twisted.python import log
 
-VALHEIM_PATH = Path('/home/svh/.config/unity3d/IronGate/Valheim')
-#VALHEIM_PATH = Path('./testdir')
-VALHEIM_WORLDS = VALHEIM_PATH / 'worlds'
-VALHEIM_CHARS = VALHEIM_PATH / 'characters'
-BACKUP_PATH = '/media/work/valheim'
-SUFFIXES = ['db', 'fch']
 LOOP_TIME = 300 # seconds
-
+SUFFIXES = ['db', 'fch']
 EVENT='IN_MOVED_TO'
 NONEEVENT= ['IN_ACCESS']
 FORMAT = '%(asctime)-15s %(levelname)s %(message)s'
 
-def _main():
+def _main(args):
     observer = log.PythonLoggingObserver()
     observer.start()
 
-    logger.info('Background backup process started in %s', VALHEIM_PATH)
+    logger.info('Background backup process started in %s', args.source)
 
     lc = LoopingCall(backup_loop)
-    d = lc.start(LOOP_TIME)
+    d = lc.start(args.loop_time)
     d.addErrback(errback)
 
     reactor.run()
+
+def parse_args(args):
+    parser = argparse.ArgumentParser(description='Regularly backup valheim world and character files after changes')
+    parser.add_argument('--source', '-s', required=True, help='Your valheim directory, some thing like $HOME/.config/unity3d/IronGate/Valheim')
+    parser.add_argument('--destination', '-D', default='.', help='Where to write the bckup files')
+    parser.add_argument('--time', '-t', default=LOOP_TIME, dest='loop_time', help='Time after which the loop is restarted')
+    parser.add_argument('--verbose', '-v', dest='loglevel', action='store_const', const=logging.INFO, default=logging.WARNING, help='Log more verbously')
+    parser.add_argument('--debug', '-d', dest='loglevel', action='store_const', const=logging.DEBUG, help='Log debug')
+    return parser.parse_args()
 
 def errback(message):
     logger.warning('Nothing found %s' % message)
@@ -77,12 +81,16 @@ def backup(files, backup_path):
         except Exception:
             logger.exception('Failed to write backup to %s', zipdest)
 
-def start_logging():
-    logging.basicConfig(level=logging.INFO, format=FORMAT)
+def start_logging(level):
+    logging.basicConfig(level=level, format=FORMAT)
     logging.Formatter.converter = lambda *args: datetime.now(tz=timezone('Europe/Berlin')).timetuple()
-    return logging.getLogger('_main_')
+    return logging.getLogger('valheimBackup')
 
 if __name__ == '__main__':
-    logger = start_logging()
-    _main()
+    args = parse_args(sys.argv[1:])
+    VALHEIM_WORLDS = Path(args.source) / 'worlds'
+    VALHEIM_CHARS  = Path(args.source) / 'characters'
+    BACKUP_PATH = Path(args.destination)
+    logger = start_logging(args.loglevel)
+    _main(args)
 
