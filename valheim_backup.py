@@ -1,4 +1,5 @@
 import sys
+import os
 import logging
 import argparse
 from glob import glob
@@ -22,7 +23,7 @@ def parse_args(args):
             description='Regularly backup valheim world and character files after changes',
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--source', '-s',
-            default="$HOME/.config/unity3d/IronGate/Valheim",
+            default=f"{os.environ['HOME']}/.config/unity3d/IronGate/Valheim",
             help='Your valheim data directory')
     parser.add_argument('--destination', '-D',
             default='.',

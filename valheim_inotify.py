@@ -1,3 +1,5 @@
+import sys
+import os
 from pathlib import Path
 import inotify.adapters
 import logging
@@ -5,18 +7,13 @@ from pytz import timezone
 from datetime import datetime
 
 
-VALHEIM_PATH = Path('/home/svh/.config/unity3d/IronGate/Valheim')
-#VALHEIM_PATH = Path('./testdir')
+VALHEIM_PATH = sys.argv[1] if sys.argv[1] else Path(f"{os.environ['HOME']}/.config/unity3d/IronGate/Valheim")
 VALHEIM_WORLDS = VALHEIM_PATH / 'worlds'
 VALHEIM_CHARS = VALHEIM_PATH / 'characters'
-BACKUP_PATH = VALHEIM_PATH / 'backup'
 
 EVENT='IN_MOVED_TO'
 
-def _main():
-    WORLDFILE = detect_state([VALHEIM_WORLDS, VALHEIM_CHARS], '.db')
-
-def detect_state(paths, suffix):
+def detect_state(paths):
     i = inotify.adapters.Inotify()
     for p in paths:
         i.add_watch(str(p))
@@ -36,5 +33,5 @@ def start_logging():
 
 if __name__ == '__main__':
     logger = start_logging()
-    _main()
+    WORLDFILE = detect_state([VALHEIM_WORLDS, VALHEIM_CHARS])
 
